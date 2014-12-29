@@ -6,7 +6,7 @@
  * Time: 下午10:08
  */
 
-class Master
+class Squire_Master
 {
     static public $process_name = "lzm_squire_Master";//进程名称
     static public $pid_file;                    //pid文件位置
@@ -61,8 +61,8 @@ class Master
         self::get_pid();
         self::write_pid();
         self::params_config();
-        foreach (self::$task_list as $task => $v) {
-            self::create_child_process($task);
+        foreach (self::$task_list as $task => $data) {
+            self::create_child_process($task,$data);
         }
         self::register_signal();
         self::$start = true;
@@ -83,23 +83,17 @@ class Master
      */
     static private function params_config()
     {
-        $config = include(self::$config_file);
-        if (!isset($config["GEARMAN_WORKERS"]) || empty($config["GEARMAN_WORKERS"])) {
-            self::exit2p("配置文件有误");
-        }
-        foreach ($config["GEARMAN_WORKERS"] as $k1 => $val1) {
-            foreach ($val1 as $k2 => $val2) {
-                for ($i = 1; $i <= $val2["processNum"]; $i++) {
-                    self::$task_list[$i . "_" . $k1 . "/" . $k2] = 1;
-                }
-            }
-        }
+        Squire_LoadConfig::$config_file = self::$config_file;
+        self::$task_list = Squire_LoadConfig::get_config();
     }
 
-    static private function create_child_process($task)
+    static private function create_child_process($task,$data)
     {
         if (empty(self::$process_list[$task])) {
-            $process = new swoole_process(array(new Slaver(), "run"));
+            $slaver = new Squire_Slaver();
+            $slaver->name = $task;
+            $slaver->data = $data;
+            $process = new swoole_process(array($slaver, "run"));
 
             self::$process_list[$task] = $process;
 
@@ -112,7 +106,7 @@ class Master
         }
         $pid = $process->start();
         self::$workers[$pid] = array("task" => $task, "process" => $process);
-        $process->write($task . "#" . self::$pid);
+        $process->write(self::$pid);
     }
 
     static private function register_signal()
@@ -121,7 +115,8 @@ class Master
             $ret = swoole_process::wait();
             $pid = $ret['pid'];
             if (!self::$stop) {
-                self::create_child_process(self::$workers[$pid]["task"]);
+                $task = self::$workers[$pid]["task"];
+                self::create_child_process($task,self::$task_list[$task]);
             }
             unset(self::$workers[$pid]);
         });
@@ -158,7 +153,7 @@ class Master
         file_put_contents(self::$pid_file, self::$pid);
     }
 
-    static private function exit2p($msg)
+    static public function exit2p($msg)
     {
         @unlink(self::$pid_file);
         Main::log_write($msg . "\n");

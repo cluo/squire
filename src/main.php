@@ -7,7 +7,6 @@
  */
 date_default_timezone_set('Asia/Shanghai');
 define('APP_DEBUG', true);
-define('APP_ENVIRONMENT', 'dev');
 define('DS', DIRECTORY_SEPARATOR);
 define('ROOT_PATH', realpath(dirname(__FILE__)) . DS);
 
@@ -82,7 +81,7 @@ EOF;
     static public function params_d($opt)
     {
         if (isset($opt["d"]) || isset($opt["daemon"])) {
-            Master::$daemon = true;
+            Squire_Master::$daemon = true;
         }
     }
 
@@ -93,7 +92,7 @@ EOF;
     static public function params_r($opt)
     {
         if (isset($opt["r"]) || isset($opt["reload"])) {
-            $pid = @file_get_contents(Crontab::$pid_file);
+            $pid = @file_get_contents(Squire_Master::$pid_file);
             if ($pid) {
                 if (swoole_process::kill($pid, 0)) {
                     swoole_process::kill($pid, SIGUSR1);
@@ -113,7 +112,7 @@ EOF;
     static public function params_m($opt)
     {
         if (isset($opt["m"]) || isset($opt["monitor"])) {
-            $pid = @file_get_contents(Crontab::$pid_file);
+            $pid = @file_get_contents(Squire_Master::$pid_file);
             if ($pid && swoole_process::kill($pid, 0)) {
                 exit;
             }else{
@@ -131,14 +130,14 @@ EOF;
     {
         //记录pid文件位置
         if (isset($opt["p"]) && $opt["p"]) {
-            Master::$pid_file = $opt["p"] . "/pid";
+            Squire_Master::$pid_file = $opt["p"] . "/pid";
         }
         //记录pid文件位置
         if (isset($opt["pid"]) && $opt["pid"]) {
-            Master::$pid_file = $opt["pid"] . "/pid";
+            Squire_Master::$pid_file = $opt["pid"] . "/pid";
         }
-        if (empty(Master::$pid_file)) {
-            Master::$pid_file = ROOT_PATH . "/pid";
+        if (empty(Squire_Master::$pid_file)) {
+            Squire_Master::$pid_file = ROOT_PATH . "/pid";
         }
     }
 
@@ -149,13 +148,13 @@ EOF;
     static public function params_l($opt)
     {
         if (isset($opt["l"]) && $opt["l"]) {
-            Master::$log_path = $opt["l"];
+            Squire_Master::$log_path = $opt["l"];
         }
         if (isset($opt["log"]) && $opt["log"]) {
-            Master::$log_path = $opt["log"];
+            Squire_Master::$log_path = $opt["log"];
         }
-        if (empty(Master::$log_path)) {
-            Master::$log_path = ROOT_PATH . "/logs/";
+        if (empty(Squire_Master::$log_path)) {
+            Squire_Master::$log_path = ROOT_PATH . "/logs/";
         }
     }
 
@@ -166,13 +165,13 @@ EOF;
     static public function params_c($opt)
     {
         if (isset($opt["c"]) && $opt["c"]) {
-            Master::$config_file = $opt["c"];
+            Squire_Master::$config_file = $opt["c"];
         }
         if (isset($opt["config"]) && $opt["config"]) {
-            Master::$config_file = $opt["config"];
+            Squire_Master::$config_file = $opt["config"];
         }
-        if (empty(Master::$config_file)) {
-            Master::$config_file = ROOT_PATH . "config/" . APP_ENVIRONMENT . "/";
+        if (empty(Squire_Master::$config_file)) {
+            Squire_Master::$config_file = ROOT_PATH . "config/" ;
         }
     }
 
@@ -190,13 +189,13 @@ EOF;
         if (isset($opt["s"]) && in_array($opt["s"], array("start", "stop", "restart"))) {
             switch ($opt["s"]) {
                 case "start":
-                    Master::start();
+                    Squire_Master::start();
                     break;
                 case "stop":
-                    Master::stop();
+                    Squire_Master::stop();
                     break;
                 case "restart":
-                    Master::restart();
+                    Squire_Master::restart();
                     break;
             }
         }
@@ -209,8 +208,8 @@ EOF;
     static public function log_write($message)
     {
         $now = date("H:i:s");
-        if (Master::$daemon) {
-            $destination = Master::$log_path . "log_" . date("Y-m-d") . ".log";
+        if (Squire_Master::$daemon) {
+            $destination = Squire_Master::$log_path . "log_" . date("Y-m-d") . ".log";
             error_log("{$now} : {$message}\r\n", 3, $destination, '');
         }
         echo "{$now} : {$message}\r\n";

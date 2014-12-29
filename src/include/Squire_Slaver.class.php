@@ -5,11 +5,12 @@
  * Date: 14-12-28
  * Time: 下午10:08
  */
-class Slaver{
+class Squire_Slaver{
 
     private $process_name_prefix = "lzm_gearman_";
     public $worker;
     public $name;
+    public $data;
 
 
 
@@ -31,22 +32,31 @@ class Slaver{
         );
     }
 
+    static protected function autoload($class)
+    {
+        static $_load = array();
+        if(isset($_load[$class])) return true;
+        include(ROOT_PATH . "app" . DS . "Squire_Common.class.php");
+        $file = ROOT_PATH . "app" . DS . $class . ".class.php";
+        if (file_exists($file)) {
+            include($file);
+        } else {
+            Main::log_write("处理类不存在");
+        }
+        $_load[$class] = true;
+        return true;
+    }
+
     public function run($worker)
     {
         $GLOBALS["worker"] = $worker;
         $this->worker = $worker;
-
-        $recv = $this->worker->read();
-        $recv = explode("#",$recv);
-        $name = $recv[0];
-        $pid = $recv[1];
-
-        $_SERVER["argv"][1] = preg_replace("/\d{1,}\_/","",$name);
-        $this->name = $this->process_name_prefix.$name."_".$pid;
-        $this->worker->name($this->name);
+        $pid = $this->worker->read();
+        $this->worker->name($this->process_name_prefix.$this->name."_".$pid);
         $this->register_signal();
         $this->add_event();
-//        require(APP_PATH . '..' . DS . 'ThinkPHP' . DS . 'ThinkPHP.php');
-
+        $class = "Squire_".$this->data["parse"];
+        self::autoload($class);
+        (new $class)->run($worker,array_merge($this->data["data"],array("name"=>$this->name)));
     }
 }
