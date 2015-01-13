@@ -81,9 +81,10 @@ class Squire_Master
     /**
      * 解析配置文件
      */
-    static private function params_config()
+    static private function params_config($reload = false)
     {
         Squire_LoadConfig::$config_file = self::$config_file;
+        if($reload) Squire_LoadConfig::reload_config();
         self::$task_list = Squire_LoadConfig::get_config();
     }
 
@@ -112,13 +113,13 @@ class Squire_Master
     static private function register_signal()
     {
         swoole_process::signal(SIGCHLD, function ($signo) {
-            $ret = swoole_process::wait();
-            $pid = $ret['pid'];
-            if (!self::$stop) {
-                $task = self::$workers[$pid]["task"];
-                self::create_child_process($task,self::$task_list[$task]);
-            }
-            unset(self::$workers[$pid]);
+            while (($pid = pcntl_wait($status, WNOHANG)) > 0) {
+                if (!self::$stop) {
+                    $task = self::$workers[$pid]["task"];
+                    self::create_child_process($task,self::$task_list[$task]);
+                }
+                unset(self::$workers[$pid]);
+            };
         });
 
         swoole_process::signal(SIGTERM, function ($signo) {
@@ -127,8 +128,26 @@ class Squire_Master
             foreach (self::$workers as $pid => $process) {
                 swoole_process::kill($pid, $signo);
             }
+            if (!empty(Main::$http_server)) {
+                swoole_process::kill(Main::$http_server->pid, SIGKILL);
+            }
             sleep(1);
             self::exit2p("已发送子进程退出信号,主进程退出");
+        });
+        //重新载入配置
+        swoole_process::signal(SIGUSR1, function ($signo) {
+            Main::log_write("收到重新载入配置信号:" . $signo);
+            self::$stop = true;
+            foreach (self::$workers as $pid => $process) {
+                swoole_process::kill($pid, SIGTERM);
+            }
+            self::$stop = false;
+            self::$workers = array();
+            self::$process_list = array();
+            self::params_config();
+            foreach (self::$task_list as $task => $data) {
+                self::create_child_process($task,$data);
+            }
         });
     }
 

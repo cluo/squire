@@ -1,7 +1,7 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: vic
+ * User: ClownFish 187231450@qq.com
  * Date: 14-12-28
  * Time: 下午10:06
  */
@@ -13,8 +13,11 @@ define('ROOT_PATH', realpath(dirname(__FILE__)) . DS);
 class Main
 {
 
+    static public $http_server;
+    static public $host;
+    static public $port;
     static private $options = "hdrmp:s:l:c:";
-    static private $longopts = array("help", "daemon","reload","monitor", "pid:", "log:", "config:");
+    static private $longopts = array("help", "daemon", "http","reload","monitor", "pid:", "log:", "config:", "host:", "port:");
     static private $help = <<<EOF
 
   帮助信息:
@@ -32,6 +35,9 @@ class Main
   -d [--daemon]      是否后台运行
   -r [--reload]      重新载入配置文件
   -m [--monitor]     监控进程是否在运行,如果在运行则不管,未运行则启动进程
+  --http             开启http服务
+  --host             监听ip,默认是127.0.0.1
+  --port             监听端口.默认是9502
 
 EOF;
 
@@ -171,7 +177,7 @@ EOF;
             Squire_Master::$config_file = $opt["config"];
         }
         if (empty(Squire_Master::$config_file)) {
-            Squire_Master::$config_file = ROOT_PATH . "config/" ;
+            Squire_Master::$config_file = ROOT_PATH . "config/worker.php" ;
         }
     }
 
@@ -199,6 +205,47 @@ EOF;
                     break;
             }
         }
+    }
+
+    /**
+     * 开启http服务 web api
+     * @param $opt
+     */
+    static public function params_http($opt)
+    {
+
+        if (!isset($opt["http"])) {
+            return false;
+        }
+        if (isset($opt["host"]) && $opt["host"]) {
+            self::$host = $opt["host"];
+        }
+        if (isset($opt["port"]) && $opt["port"]) {
+            self::$port = $opt["port"];
+        }
+
+        $process = new swoole_process(array(new Main(), "http_run"));
+        $process->start();
+        self::$http_server = $process;
+
+        swoole_event_add($process->pipe, function ($pipe) use ($process) {
+            $manager = new Manager();
+            $recv = $process->read();
+            $recv = explode("#@#", $recv);
+            $function = $recv[0] . "_cron";
+            $process->write(json_encode($manager->$function(json_decode($recv[1], true))));
+        });
+        return true;
+    }
+
+    /**
+     * 运行httpserver
+     * @param $worker
+     */
+    public function http_run($worker)
+    {
+        $binpath = $_SERVER["_"];
+        $worker->exec($binpath, array(ROOT_PATH . "include/http.php", $worker->pipe, Squire_Master::$config_file,self::$host,self::$port));
     }
 
     /**

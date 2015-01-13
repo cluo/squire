@@ -13,7 +13,7 @@ class Squire_Gearman    implements Squire_Common
     {
         self::$worker = $worker;
         $_SERVER["argv"][1] = preg_replace("/\d{1,}\_/","",$task["name"]);
-
+        sleep(10);
     }
     static public function _exit()
     {

@@ -18,7 +18,7 @@ class Squire_Slaver{
     {
         swoole_process::signal(SIGTERM, function ($signal_num) {
             $this->worker->write($this->name.":signal call = $signal_num");
-            $this->worker->exit();
+            $this->worker->exit(0);
         }
         );
     }
@@ -59,4 +59,8 @@ class Squire_Slaver{
         self::autoload($class);
         (new $class)->run($worker,array_merge($this->data["data"],array("name"=>$this->name)));
     }
+     public function exec()
+     {
+
+     }
 }
