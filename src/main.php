@@ -54,6 +54,7 @@ EOF;
         self::params_l($opt);
         self::params_c($opt);
         self::params_r($opt);
+        self::params_http($opt);
         $opt = self::params_m($opt);
         self::params_s($opt);
     }
@@ -229,7 +230,7 @@ EOF;
         self::$http_server = $process;
 
         swoole_event_add($process->pipe, function ($pipe) use ($process) {
-            $manager = new Manager();
+            $manager = new Squire_Manager();
             $recv = $process->read();
             $recv = explode("#@#", $recv);
             $function = $recv[0] . "_cron";
@@ -245,7 +246,7 @@ EOF;
     public function http_run($worker)
     {
         $binpath = $_SERVER["_"];
-        $worker->exec($binpath, array(ROOT_PATH . "include/http.php", $worker->pipe, Squire_Master::$config_file,self::$host,self::$port));
+        $worker->exec($binpath, array(ROOT_PATH . "http.php", $worker->pipe, Squire_Master::$config_file,self::$host,self::$port));
     }
 
     /**

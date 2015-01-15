@@ -8,21 +8,21 @@
 
 define('ROOT_PATH', realpath(dirname(__FILE__)) . "/");
 
-require ROOT_PATH."include/Manager.class.php";
+require ROOT_PATH."include/Squire_Manager.class.php";
 
 class Http
 {
     static public $route = array(
-        array("/conf", "getcrontab", 'get', true),
-        array("/conf", "addcrontab", 'post', true),
-        array("/conf", "delcrontab", 'delete', true),
-        array("/reload", "reloadconf", 'get', true),
+        array("/conf", "getworker", 'get', true),
+        array("/conf", "addworker", 'post', true),
+        array("/conf", "delworker", 'delete', true),
+        array("/reload", "reloadworker", 'get', true),
         array("/logs", "loglist", 'get', false),
         array("/import", "importconf", 'post', false),
     );
     static public $host = "127.0.0.1";
-    static public $port = 9501;
-    static public $name = "lzm_Http";
+    static public $port = 9502;
+    static public $name = "lzm_Squire_Http";
 
     static public $http;
     static public $manager;
@@ -36,7 +36,7 @@ class Http
 
     static public function start()
     {
-        self::$manager = new Manager();
+        self::$manager = new Squire_Manager();
         self::$http->on('request', function ($request, $response) {
             if (!self::route($request, $response)) {
                 $response->status(404);
@@ -65,7 +65,8 @@ class Http
                         $response->end($return);
                         return true;
                     } else {
-                        return call_user_func_array(array(new Manager(), $rte[1] . "_http"), array("request" => $request, "response" => $response));
+                        call_user_func_array(array(new Squire_Manager(), $rte[1] . "_http"), array("request" => $request, "response" => $response));
+                        return true;
                     }
                 }
             }

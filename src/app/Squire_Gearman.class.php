@@ -11,12 +11,13 @@ class Squire_Gearman
     static public $conf_file;
     static $process_name_prefix = "lzm_squire";
     static $pid;
+    static $name;
 
 
     static public function register_signal()
     {
-        swoole_process::signal(SIGUSR1, function ($signal_num) {
-            echo "收到结束信号，结束进程";
+        swoole_process::signal(SIGUSR2, function ($signal_num) {
+            echo "收到结束信号，结束进程\n";
             exit();
         }
         );
@@ -29,13 +30,25 @@ class Squire_Gearman
     {
         self::set_process_name($name);
         self::register_signal();
-        $_SERVER["argv"][1] = preg_replace("/\d{1,}\_/","",$name);
-        echo $_SERVER["argv"][1]."\n";
-        sleep(100);
+        self::$name = preg_replace("/\d{1,}\_/","",$name);
+        $_SERVER["argv"][1] = self::$name;
+        //require "/var/www/sitev2/gearman/index.php";
     }
-    static public function _exit()
+
+    static public function task()
     {
-        self::$worker->exit(1);
+        $conf = include self::$conf_file;
+        if(!isset($conf[self::$name])){
+            self::_exit("配置不存在");
+        }
+        return $conf[self::$name]["task"];
+
+
+    }
+    static public function _exit($msg)
+    {
+        echo $msg;
+        exit;
     }
 }
 

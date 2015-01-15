@@ -24,6 +24,6 @@ class Squire_Slaver{
          if (!file_exists($file)) {
              return false;
          }
-         $this->worker->exec($_SERVER["_"],array($file,$this->name,$this->pid));
+         $this->worker->exec($_SERVER["_"],array($file,$this->name,$this->pid,Squire_Master::$config_file));
      }
 }

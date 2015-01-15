@@ -66,6 +66,9 @@ class Squire_Master
         }
         self::register_signal();
         self::$start = true;
+        swoole_timer_add(1000, function ($interval) {
+            //var_dump(Squire_Master::$stop);
+        });
     }
 
     /**
@@ -97,11 +100,6 @@ class Squire_Master
             $process = new swoole_process(array($slaver, "run"));
 
             self::$process_list[$task] = $process;
-
-            swoole_event_add($process->pipe, function ($pipe) use ($process) {
-                $recv = $process->read();
-                Main::log_write("From {$process->pid} :" . $recv);
-            });
         } else {
             $process = self::$process_list[$task];
         }
@@ -114,41 +112,49 @@ class Squire_Master
     {
         swoole_process::signal(SIGCHLD, function ($signo) {
             while (($pid = pcntl_wait($status, WNOHANG)) > 0) {
-                if (!self::$stop) {
-                    $task = self::$workers[$pid]["task"];
-                    self::create_child_process($task,self::$task_list[$task]);
+                Main::log_write("收到子进程退出信号" . $signo);
+                if (!isset(Squire_Master::$workers[$pid]["logout"])) {
+                    $task = Squire_Master::$workers[$pid]["task"];
+                    Squire_Master::create_child_process($task,Squire_Master::$task_list[$task]);
                 }
-                unset(self::$workers[$pid]);
+                unset(Squire_Master::$workers[$pid]);
             };
         });
 
         swoole_process::signal(SIGTERM, function ($signo) {
             Main::log_write("收到主进程退出信号, 发送子进程退出信号:" . $signo);
-            self::$stop = true;
-            foreach (self::$workers as $pid => $process) {
-                swoole_process::kill($pid, $signo);
+            foreach (Squire_Master::$workers as $pid => $process) {
+                Squire_Master::$workers[$pid]["logout"] = true;
+                swoole_process::kill($pid, SIGUSR2);
             }
             if (!empty(Main::$http_server)) {
                 swoole_process::kill(Main::$http_server->pid, SIGKILL);
             }
             sleep(1);
-            self::exit2p("已发送子进程退出信号,主进程退出");
+            Squire_Master::exit2p("已发送子进程退出信号,主进程退出");
         });
         //重新载入配置
         swoole_process::signal(SIGUSR1, function ($signo) {
             Main::log_write("收到重新载入配置信号:" . $signo);
-            self::$stop = true;
-            foreach (self::$workers as $pid => $process) {
-                swoole_process::kill($pid, SIGTERM);
-            }
-            self::$stop = false;
-            self::$workers = array();
-            self::$process_list = array();
-            self::params_config();
-            foreach (self::$task_list as $task => $data) {
-                self::create_child_process($task,$data);
-            }
+            Squire_Master::reload();
         });
+    }
+
+    /**
+     * 重载进程
+     */
+    static public function reload()
+    {
+        foreach (self::$workers as $pid => $process) {
+            Squire_Master::$workers[$pid]["logout"] = true;
+            swoole_process::kill($pid, SIGUSR2);
+
+        }
+        Squire_Master::$process_list = array();
+        Squire_Master::params_config(true);
+        foreach (Squire_Master::$task_list as $task => $data) {
+            Squire_Master::create_child_process($task,$data);
+        }
     }
 
     static private function set_process_name()

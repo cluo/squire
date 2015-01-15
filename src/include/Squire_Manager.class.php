@@ -13,9 +13,9 @@ class Squire_Manager
      * @param $params
      * @return array
      */
-    function getcrontab_cron($params)
+    function getworker_cron($params)
     {
-        return $this->output(LoadConfig::get_config());
+        return $this->output(Squire_LoadConfig::get_config());
     }
 
     /**
@@ -23,37 +23,37 @@ class Squire_Manager
      * @param $params
      * @return array
      */
-    function reloadconf_cron($params)
+    function reloadworker_cron($params)
     {
-        Crontab::load_config(true);
+        Squire_Master::reload();
         return $this->output("ok");
     }
 
-    function addcrontab_cron($params)
+    function addworker_cron($params)
     {
-        $tasks = $params["post"]["tasks"];
-        $tasks = json_decode($tasks, true);
-        if (empty($tasks)) {
+        $workers = isset($params["post"]["workers"])?$params["post"]["workers"]:"";
+        $workers = json_decode($workers, true);
+        if (empty($workers)) {
             return $this->output("参数有误", false);
         }
-        foreach ($tasks as $id => $task) {
-            if (empty($task["name"]) || empty($task["time"]) || empty($task["task"])) {
+        foreach ($workers as $id => $worker) {
+            if (empty($worker["name"]) || empty($worker["processNum"]) || empty($worker["parse"]) || empty($worker["task"])) {
                 return $this->output("参数有误", false);
             }
         }
-        LoadConfig::send_config($tasks);
-        Crontab::load_config(true);
+        Squire_LoadConfig::send_config($workers);
+        Squire_Master::reload();
         return $this->output("ok");
     }
 
-    function delcrontab_cron($params)
+    function delworker_cron($params)
     {
-        $task = $params["get"]["taskid"];
-        if (!is_string($task)) {
+        $workerid = $params["get"]["workerid"];
+        if (!is_string($workerid)) {
             return $this->output("参数有误", false);
         }
-        LoadConfig::del_config($task);
-        Crontab::load_config(true);
+        Squire_LoadConfig::del_config($workerid);
+        Squire_Master::reload();
         return $this->output("ok");
     }
 
@@ -62,7 +62,7 @@ class Squire_Manager
      */
     function loglist_http($request, $response)
     {
-        $date = $request->get["date"];
+        $date = isset($request->get["date"])?$request->get["date"]:"";
         if ($date) {
             $filename = ROOT_PATH . "logs/log_" . $date . ".log";
             $data = file_get_contents($filename);
@@ -80,21 +80,21 @@ class Squire_Manager
      */
     function importconf_http($request, $response)
     {
-        $tasks = $request->post["tasks"];
-        $tasks = json_decode($tasks, true);
-        if (empty($tasks)) {
+        $workers = $request->post["workers"];
+        $workers = json_decode($workers, true);
+        if (empty($workers)) {
             $response->end(json_encode($this->output("参数有误", false)));
         }
-        foreach ($tasks as $id => $task) {
-            if (empty($task["name"]) || empty($task["time"]) || empty($task["task"])) {
+        foreach ($workers as $id => $task) {
+            if (empty($task["name"]) || empty($task["time"]) || empty($task["parse"]) || empty($task["task"])) {
                 $response->end(json_encode($this->output("参数有误", false)));
             }
         }
         ob_start();
-        var_export($tasks);
+        var_export($workers);
         $config = ob_get_clean();
         file_put_contents(Http::$conf_file, "<?php \n return " . $config . ";");
-        fwrite(Http::$fp, "reloadconf#@#" . json_encode(array()));
+        fwrite(Http::$fp, "reloadworker#@#" . json_encode(array()));
 
         $response->end(json_encode($this->output("ok")));
     }

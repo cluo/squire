@@ -70,9 +70,29 @@ class Squire_LoadConfig
         $config =array();
         foreach (self::$ori_config as $id => $worker) {
                 for ($i = 1; $i <= $worker["processNum"]; $i++) {
-                    $config[$i . "_" .$worker["name"]] = array("parse"=>$worker["parse"],"data"=>$worker["task"]);
+                    $config[$i . "_" .$id] = array("parse"=>$worker["parse"],"data"=>$worker["task"]);
                 }
         }
         return $config;
+    }
+
+    static public function del_config($task)
+    {
+        unset(self::$ori_config[$task]);
+        self::parse_config();
+        self::save_config();
+    }
+
+    static protected function save_config()
+    {
+        ob_start();
+        var_export(self::$config);
+        $config = ob_get_clean();
+        if (is_file(self::$config_file)) {
+            $path = self::$config_file;
+        } else if (is_dir(self::$config_file)) {
+            $path = self::$config_file . "worker.php";
+        }
+        file_put_contents($path, "<?php \n return " . $config . ";");
     }
 }
