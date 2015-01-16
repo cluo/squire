@@ -10,12 +10,13 @@ class Squire_Manager
 {
 
     /**
+     * 获取任务列表
      * @param $params
      * @return array
      */
     function getworker_cron($params)
     {
-        return $this->output(Squire_LoadConfig::get_config());
+        return $this->output(Squire_LoadConfig::get_ori_config());
     }
 
     /**
@@ -29,9 +30,14 @@ class Squire_Manager
         return $this->output("ok");
     }
 
+    /**
+     * 添加或替换
+     * @param $params
+     * @return array
+     */
     function addworker_cron($params)
     {
-        $workers = isset($params["post"]["workers"])?$params["post"]["workers"]:"";
+        $workers = isset($params["post"]["workers"]) ? $params["post"]["workers"] : "";
         $workers = json_decode($workers, true);
         if (empty($workers)) {
             return $this->output("参数有误", false);
@@ -46,10 +52,15 @@ class Squire_Manager
         return $this->output("ok");
     }
 
+    /**
+     * 删除
+     * @param $params
+     * @return array
+     */
     function delworker_cron($params)
     {
-        $workerid = $params["get"]["workerid"];
-        if (!is_string($workerid)) {
+        $workerid = isset($params["get"]["workerid"])?$params["get"]["workerid"]:"";
+        if (empty($workerid)) {
             return $this->output("参数有误", false);
         }
         Squire_LoadConfig::del_config($workerid);
@@ -58,11 +69,12 @@ class Squire_Manager
     }
 
     /**
+     * 日志
      * @param $params
      */
-    function loglist_http($request, $response)
+    function loglist_http($request)
     {
-        $date = isset($request->get["date"])?$request->get["date"]:"";
+        $date = isset($request->get["date"]) ? $request->get["date"] : "";
         if ($date) {
             $filename = ROOT_PATH . "logs/log_" . $date . ".log";
             $data = file_get_contents($filename);
@@ -70,7 +82,7 @@ class Squire_Manager
         } else {
             $data = $this->output("参数有误", false);
         }
-        $response->end(json_encode($data));
+        return $data;
     }
 
     /**
@@ -78,16 +90,17 @@ class Squire_Manager
      * @param $request
      * @param $response
      */
-    function importconf_http($request, $response)
+    function importconf_http($request)
     {
-        $workers = $request->post["workers"];
+        $workers = isset($request->post["workers"])?$request->post["workers"]:"";
         $workers = json_decode($workers, true);
+
         if (empty($workers)) {
-            $response->end(json_encode($this->output("参数有误", false)));
+            return $this->output("参数有误", false);
         }
-        foreach ($workers as $id => $task) {
-            if (empty($task["name"]) || empty($task["time"]) || empty($task["parse"]) || empty($task["task"])) {
-                $response->end(json_encode($this->output("参数有误", false)));
+        foreach ($workers as $id => $worker) {
+            if (empty($worker["name"]) || empty($worker["processNum"]) || empty($worker["parse"]) || empty($worker["task"])) {
+               return $this->output("参数有误", false);
             }
         }
         ob_start();
@@ -95,10 +108,15 @@ class Squire_Manager
         $config = ob_get_clean();
         file_put_contents(Http::$conf_file, "<?php \n return " . $config . ";");
         fwrite(Http::$fp, "reloadworker#@#" . json_encode(array()));
-
-        $response->end(json_encode($this->output("ok")));
+        return $this->output("ok");
     }
 
+    /**
+     * 统一输出
+     * @param $data
+     * @param bool $status
+     * @return array
+     */
     public function output($data, $status = true)
     {
         return array("status" => $status, "data" => $data);

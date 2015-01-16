@@ -18,7 +18,7 @@ class Squire_LoadConfig
      */
     static public function get_config()
     {
-        if(empty(self::$config)){
+        if (empty(self::$config)) {
             self::load_config();
             self::$config = self::parse_config();
         }
@@ -32,6 +32,15 @@ class Squire_LoadConfig
         self::$config = self::parse_config();
     }
 
+    static public function send_config($workers)
+    {
+        foreach($workers as $id=>$worker)
+        {
+            self::$ori_config[$id] = $worker;
+        }
+        self::save_config();
+    }
+
     /**
      * 从配置文件载入配置
      */
@@ -42,21 +51,18 @@ class Squire_LoadConfig
         } elseif (is_file(self::$config_file)) {
             self::$ori_config = include(self::$config_file);
         }
-        if (empty(self::$ori_config)) {
-            Squire_Master::exit2p("配置文件有误");
-        }
     }
 
     static protected function load_by_path($path)
     {
-        $config =array();
-        $files = glob($path."*.php");
-        if(empty($files)){
+        $config = array();
+        $files = glob($path . "*.php");
+        if (empty($files)) {
             return array();
         }
-        foreach($files as $filename){
+        foreach ($files as $filename) {
             $conf = include($filename);
-            $config = array_merge($config,$conf);
+            $config = array_merge($config, $conf);
         }
         return $config;
     }
@@ -67,11 +73,11 @@ class Squire_LoadConfig
      */
     static protected function parse_config()
     {
-        $config =array();
+        $config = array();
         foreach (self::$ori_config as $id => $worker) {
-                for ($i = 1; $i <= $worker["processNum"]; $i++) {
-                    $config[$i . "_" .$id] = array("parse"=>$worker["parse"],"data"=>$worker["task"]);
-                }
+            for ($i = 1; $i <= $worker["processNum"]; $i++) {
+                $config[$i . "_" . $id] = array("parse" => $worker["parse"], "data" => $worker["task"]);
+            }
         }
         return $config;
     }
@@ -79,14 +85,22 @@ class Squire_LoadConfig
     static public function del_config($task)
     {
         unset(self::$ori_config[$task]);
-        self::parse_config();
         self::save_config();
+        self::parse_config();
+    }
+
+    static public function get_ori_config()
+    {
+        if(empty(self::$ori_config)){
+            self::load_config();
+        }
+        return self::$ori_config;
     }
 
     static protected function save_config()
     {
         ob_start();
-        var_export(self::$config);
+        var_export(self::$ori_config);
         $config = ob_get_clean();
         if (is_file(self::$config_file)) {
             $path = self::$config_file;

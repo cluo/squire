@@ -8,7 +8,7 @@
 
 define('ROOT_PATH', realpath(dirname(__FILE__)) . "/");
 
-require ROOT_PATH."include/Squire_Manager.class.php";
+require ROOT_PATH . "include/Squire_Manager.class.php";
 
 class Http
 {
@@ -57,7 +57,7 @@ class Http
                 if (strtolower($rte[2]) == strtolower($method)) {
                     if ($rte[3]) {
                         $data = array(
-                            "get"  => isset($request->get) ? $request->get : "",
+                            "get" => isset($request->get) ? $request->get : "",
                             "post" => isset($request->post) ? $request->post : ""
                         );
                         fwrite(self::$fp, $rte[1] . "#@#" . json_encode($data));
@@ -65,7 +65,7 @@ class Http
                         $response->end($return);
                         return true;
                     } else {
-                        call_user_func_array(array(new Squire_Manager(), $rte[1] . "_http"), array("request" => $request, "response" => $response));
+                        $response->end(json_encode(call_user_func_array(array(new Squire_Manager(), $rte[1] . "_http"), array("request" => $request))));
                         return true;
                     }
                 }
@@ -82,11 +82,12 @@ class Http
         self::start();
     }
 }
-if(!empty($argv[2]))
+
+if (!empty($argv[2]))
     Http::$conf_file = $argv[2];
-if(!empty($argv[3]))
+if (!empty($argv[3]))
     Http::$host = $argv[3];
-if(!empty($argv[4]))
+if (!empty($argv[4]))
     Http::$port = $argv[4];
 
 Http::run($argv[1]);
