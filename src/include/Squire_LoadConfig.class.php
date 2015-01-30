@@ -71,10 +71,13 @@ class Squire_LoadConfig
      * 格式化配置文件中的配置
      * @return array
      */
-    static protected function parse_config()
+    static public function parse_config($ori_config = array())
     {
+        if(empty($ori_config)){
+            $ori_config = self::$ori_config;
+        }
         $config = array();
-        foreach (self::$ori_config as $id => $worker) {
+        foreach ($ori_config as $id => $worker) {
             for ($i = 1; $i <= $worker["processNum"]; $i++) {
                 $config[$i . "_" . $id] = array("parse" => $worker["parse"], "data" => $worker["task"]);
             }
@@ -84,9 +87,14 @@ class Squire_LoadConfig
 
     static public function del_config($task)
     {
+        if(!isset(self::$ori_config[$task])){
+            return array();
+        }
+        $config[$task] = self::$ori_config[$task];
         unset(self::$ori_config[$task]);
         self::save_config();
-        self::parse_config();
+        self::$config = self::parse_config();
+        return self::parse_config($config);
     }
 
     static public function get_ori_config()

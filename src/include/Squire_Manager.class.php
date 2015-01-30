@@ -48,7 +48,8 @@ class Squire_Manager
             }
         }
         Squire_LoadConfig::send_config($workers);
-        Squire_Master::reload();
+        $config = Squire_LoadConfig::parse_config($workers);
+        Squire_Master::reload($config);
         return $this->output("ok");
     }
 
@@ -63,8 +64,11 @@ class Squire_Manager
         if (empty($workerid)) {
             return $this->output("参数有误", false);
         }
-        Squire_LoadConfig::del_config($workerid);
-        Squire_Master::reload();
+        $config = Squire_LoadConfig::del_config($workerid);
+        if(empty($config)){
+            return $this->output("workerid不存在", false);
+        }
+        Squire_Master::exitprocess($config);
         return $this->output("ok");
     }
 

@@ -155,17 +155,48 @@ class Squire_Master
     /**
      * 重载进程
      */
-    static public function reload()
+    static public function reload($workers= array())
     {
-        foreach (self::$workers as $pid => $process) {
-            Squire_Master::$workers[$pid]["logout"] = true;
-            swoole_process::kill($pid, SIGUSR2);
 
+        if(empty($workers)){
+            foreach (self::$workers as $pid => $process) {
+                Squire_Master::$workers[$pid]["logout"] = true;
+                swoole_process::kill($pid, SIGUSR2);
+
+            }
+            Squire_Master::$process_list = array();
+            Squire_Master::params_config(true);
+            foreach (Squire_Master::$task_list as $task => $data) {
+                Squire_Master::create_child_process($task,$data);
+            }
+        }else{
+            foreach($workers as $task=>$data){
+                foreach (self::$workers as $pid => $process) {
+                    if($process["task"] == $task){
+                        Squire_Master::$workers[$pid]["logout"] = true;
+                        swoole_process::kill($pid, SIGUSR2);
+                        unset(self::$process_list[$task]);
+                    }
+                }
+                Squire_Master::create_child_process($task,$data);
+            }
         }
-        Squire_Master::$process_list = array();
-        Squire_Master::params_config(true);
-        foreach (Squire_Master::$task_list as $task => $data) {
-            Squire_Master::create_child_process($task,$data);
+    }
+
+    /**
+     * 结束已开进程
+     * @param $workers
+     */
+    static public function exitprocess($workers)
+    {
+        foreach($workers as $task=>$data){
+            foreach (self::$workers as $pid => $process) {
+                if($process["task"] == $task){
+                    Squire_Master::$workers[$pid]["logout"] = true;
+                    swoole_process::kill($pid, SIGUSR2);
+                    unset(self::$process_list[$task]);
+                }
+            }
         }
     }
 
